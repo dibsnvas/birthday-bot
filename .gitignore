@@ -1,0 +1,5 @@
+.venv
+.env
+birthdays.db
+__pycache__/
+*.log
