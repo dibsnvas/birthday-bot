@@ -4,15 +4,13 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 from dotenv import load_dotenv
 
-# ---------- CONFIG ----------
 load_dotenv()
 TZ = ZoneInfo("Asia/Almaty")
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # хранится в .env
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 DB = "birthdays.db"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-# ---------- DB ----------
 def db():
     conn = sqlite3.connect(DB)
     conn.execute("""
@@ -50,7 +48,6 @@ def remove_bday(chat_id: int, ident: str):
     conn.commit(); conn.close()
     return cnt
 
-# ---------- DATES ----------
 def is_leap(y: int) -> bool:
     return (y % 4 == 0 and y % 100 != 0) or (y % 400 == 0)
 
@@ -69,7 +66,6 @@ def next_occurrence(bday: dt.date, today: dt.date) -> dt.date:
             try_date = dt.date(year, m, d)
     return try_date
 
-# ---------- JOB ----------
 async def send_due_birthdays(app: Application):
     today = dt.datetime.now(TZ).date()
     conn = db()
@@ -141,7 +137,6 @@ async def add_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Ок, добавил: {name} — {date_str} (за {days} дн.)")
 
 async def test_now(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Запускаем проверку прямо сейчас
     await send_due_birthdays(context.application)
     await update.message.reply_text("✓ Проверил и отправил все актуальные напоминания.")
 
@@ -163,7 +158,6 @@ async def import_local_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     added = 0
     conn = db()
     try:
-        # utf-8-sig убирает BOM, Sniffer поймает ; , | \t как разделитель
         with open(path, "r", encoding="utf-8-sig", newline="") as f:
             sample = f.read(4096)
             f.seek(0)
@@ -177,7 +171,6 @@ async def import_local_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text("Не удалось прочитать заголовки CSV.")
                 conn.close(); return
 
-            # нормализуем имена колонок
             keymap = { (k or "").strip().lower(): k for k in reader.fieldnames }
 
             name_key = keymap.get("name") or keymap.get("имя")
@@ -192,13 +185,12 @@ async def import_local_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             for row in reader:
                 if not row.get(name_key) and not row.get(date_key):
-                    continue  # пропуск пустых строк
+                    continue
                 name = (row.get(name_key) or "").strip()
                 date_str = (row.get(date_key) or "").strip()
                 if not name or not date_str:
                     continue
                 try:
-                    # валидация даты
                     dt.date.fromisoformat(date_str)
                 except ValueError:
                     continue
@@ -236,23 +228,18 @@ async def remove_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 from datetime import time, datetime, timedelta
 
 async def _due_job(context: ContextTypes.DEFAULT_TYPE):
-    # Запускает рассылку из твоей функции
     await send_due_birthdays(context.application)
 
 def schedule_jobs(app: Application):
-    # Ежедневно в 09:00 по Алматы
     app.job_queue.run_daily(
         _due_job,
-        time=time(hour=15, minute=3, tzinfo=TZ),
+        time=time(hour=15, minute=30, tzinfo=TZ),
         name="daily_bdays"
     )
 
-    # (опционально) для отладки — каждые 60 сек
-    # app.job_queue.run_repeating(_due_job, interval=60, first=10, name="debug_every_minute")
 
     logging.info("JobQueue scheduled: daily at 09:00 Asia/Almaty")
 
-# ---------- MAIN ----------
 def main():
     token = BOT_TOKEN
     if not token:
