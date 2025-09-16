@@ -233,7 +233,7 @@ async def _due_job(context: ContextTypes.DEFAULT_TYPE):
 def schedule_jobs(app: Application):
     app.job_queue.run_daily(
         _due_job,
-        time=time(hour=15, minute=30, tzinfo=TZ),
+        time=time(hour=9, minute=0, tzinfo=TZ),
         name="daily_bdays"
     )
 
